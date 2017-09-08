@@ -15,7 +15,7 @@ import ast
 import re
 import ctypes as c
 
-from typhon.arts.workspace.api       import arts_api, variable_value_factory
+from typhon.arts.workspace.api       import arts_api, VariableValueStruct
 from typhon.arts.workspace.variables import WorkspaceVariable, group_ids, group_names
 from typhon.arts.workspace import variables, workspace
 

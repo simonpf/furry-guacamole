@@ -17,7 +17,7 @@ from   ast     import iter_child_nodes, parse, NodeVisitor, Call, Attribute, Nam
                       Expression, FunctionDef
 from   inspect import getsource, getsourcelines
 
-from typhon.arts.workspace.api       import arts_api, variable_value_factory
+from typhon.arts.workspace.api       import arts_api, VariableValueStruct
 from typhon.arts.workspace.methods   import WorkspaceMethod, workspace_methods
 from typhon.arts.workspace.variables import WorkspaceVariable, group_names, group_ids
 from typhon.arts.workspace.agendas   import Agenda
@@ -172,7 +172,7 @@ class Workspace:
         if type(var) == WorkspaceVariable:
             return var
         group_id = WorkspaceVariable.get_group_id(var)
-        s  = variable_value_factory(var)
+        s  = VariableValueStruct(var)
         ws_id = arts_api.add_variable(self.ptr, group_id, s)
         arts_api.set_variable_value(self.ptr, ws_id, group_id, s)
         return WorkspaceVariable(ws_id,
@@ -226,9 +226,13 @@ class Workspace:
         """
         if not name in imports:
             try:
+                print("check0: " + name)
                 imports[name] = Agenda.parse(name)
+                print(name)
             except:
-                Exception("Error parsing controlfile " + name )
+                raise Exception("Error parsing controlfile " + name )
 
+        print(name)
+        print(imports.keys())
 
         imports[name].execute(self)

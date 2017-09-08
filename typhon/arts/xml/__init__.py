@@ -9,6 +9,7 @@ import gzip
 import glob
 import itertools
 import os
+import stat
 from os.path import isfile, join, basename, splitext, dirname
 
 from . import read
@@ -59,6 +60,7 @@ def save(var, filename, precision='.7e', format='ascii', comment=None,
     with xmlopen(filename, mode='wt', encoding='UTF-8') as fp:
         if format == 'binary':
             with open(filename + '.bin', mode='wb') as binaryfp:
+
                 axw = write.ARTSXMLWriter(fp, precision=precision,
                                           binaryfp=binaryfp)
                 axw.write_header()
@@ -94,12 +96,14 @@ def load(filename):
                [ 2.,  3.]])
 
     """
+
     # If file is not found, try the gzipped version.
-    if not isfile(filename):
-        if not isfile(filename + '.gz'):
-            raise FileNotFoundError("No such file: '{}'".format(filename))
-        else:
-            filename += '.gz'
+    if not stat.S_ISFIFO(os.stat(filename).st_mode):
+        if not isfile(filename):
+            if not isfile(filename + '.gz'):
+                raise FileNotFoundError("No such file: '{}'".format(filename))
+            else:
+                filename += '.gz'
 
     if filename.endswith('.gz'):
         xmlopen = gzip.open
@@ -108,8 +112,9 @@ def load(filename):
 
     binaryfilename = filename + '.bin'
     with xmlopen(filename, 'rb') as fp:
-        if isfile(binaryfilename):
+        if isfile(binaryfilename) or stat.S_ISFIFO(os.stat(filename).st_mode):
             with open(binaryfilename, 'rb',) as binaryfp:
+                print("opening binary:" + binaryfilename)
                 return read.parse(fp, binaryfp).getroot().value()
         else:
             return read.parse(fp).getroot().value()

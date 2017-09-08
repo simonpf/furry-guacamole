@@ -15,7 +15,12 @@ import re
 import numpy as np
 import scipy as sp
 import ctypes as c
+import uuid
+import os
 
+from multiprocessing import Process
+
+import typhon.arts.xml as xml
 from typhon.arts.workspace.api import arts_api
 from typhon.arts.workspace.agendas import Agenda
 
@@ -208,6 +213,41 @@ class WorkspaceVariable:
             return a
         except:
             raise Exception("Type of workspace variable is not supported by the interface.")
+
+    def to_typhon(self):
+        if not self.ws:
+            raise Exception("Variable needs associated workspace to be read from workspace.")
+
+        name = str(uuid.uuid4())
+        xml_file = os.mkfifo(name + ".xml")
+        bin_file = os.mkfifo(name + ".xml.bin")
+
+        p = Process(target = self.ws.WriteXML, args=("binary", self, name + ".xml", 0))
+        p.start()
+        v = xml.load(name + ".xml")
+        p.join()
+        os.remove(name + ".xml")
+        os.remove(name + ".xml.bin")
+        return v
+
+    def from_typhon(self, val):
+        if not self.ws:
+            raise Exception("Variable needs associated workspace to be set from typhon object.")
+
+        if not val.__class__.__name__ == self.group:
+            raise Exception("Passed object does not match group of this variable.")
+
+        name = str(uuid.uuid4())
+        xml_file = os.mkfifo(name + ".xml")
+        bin_file = os.mkfifo(name + ".xml.bin")
+
+        p = Process(target = xml.save, args=(val, name + ".xml"), kwargs={'format' : 'binary'})
+        p.start()
+        v = self.ws.ReadXML(self, name + ".xml")
+        p.join()
+        os.remove(name + ".xml")
+        os.remove(name + ".xml.bin")
+        return v
 
     def update(self):
         """ Update data references of the object.

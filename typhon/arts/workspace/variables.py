@@ -219,25 +219,37 @@ class WorkspaceVariable:
             raise Exception("Variable needs associated workspace to be read from workspace.")
 
         name = str(uuid.uuid4())
-        name = "/dev/shm/" + name + ".xml"
+        xml_file = os.mkfifo(name + ".xml")
+        bin_file = os.mkfifo(name + ".xml.bin")
 
-        self.ws.WriteXML("binary", self, name, 0)
-        v = xml.load(name)
-        os.remove(name)
-        os.remove(name + ".bin")
+        p = Process(target = self.ws.WriteXML, args=("binary", self, name + ".xml", 0))
+        p.start()
+        v = xml.load(name + ".xml")
+        p.join()
+        os.remove(name + ".xml")
+        os.remove(name + ".xml.bin")
         return v
 
     def from_typhon(self, val):
         if not self.ws:
-            raise Exception("Variable needs associated workspace to be read from workspace.")
+            raise Exception("Variable needs associated workspace to be set from typhon object.")
+
+        if not val.__class__.__name__ == self.group:
+            raise Exception("Passed object does not match group of this variable.")
 
         name = str(uuid.uuid4())
-        name = "/dev/shm/" + name + ".xml"
+        xml_file = os.mkfifo(name + ".xml")
+        bin_file = os.mkfifo(name + ".xml.bin")
 
-        v = xml.save(val, name, format="binary")
-        self.ws.ReadXML(self, name)
-        os.remove(name)
-        os.remove(name + ".bin")
+
+        p = Process(target = self.ws.ReadXML, kwargs={'out':self, 'filename':name + ".xml"})
+        pr1 = Process(target = open, args=(name + ".xml",), kwargs={'mode':'rt', 'encoding':'UTF-8'})
+        pr2 = Process(target = open, args=(name + ".xml.bin",), kwargs={'mode':'rb'})
+        p.start()
+        pr2.start()
+        xml.save(val, name + ".xml", format='binary')
+        os.remove(name + ".xml")
+        os.remove(name + ".xml.bin")
 
     def update(self):
         """ Update data references of the object.

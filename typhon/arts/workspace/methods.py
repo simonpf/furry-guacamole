@@ -336,6 +336,9 @@ class WorkspaceMethod:
         # Execute WSM and check for errors.
         arg_out_ptr = c.cast((c.c_long * len(arts_args_out))(*arts_args_out), c.POINTER(c.c_long))
         arg_in_ptr = c.cast((c.c_long * len(arts_args_in))(*arts_args_in), c.POINTER(c.c_long))
+        print("out:" + str(arts_args_out))
+        print("in: " + str(arts_args_in))
+
         e_ptr = arts_api.execute_workspace_method(ws.ptr, m_id,
                                                   len(arts_args_out),
                                                   arg_out_ptr,

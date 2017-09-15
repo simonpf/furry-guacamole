@@ -9,6 +9,8 @@ import gzip
 import glob
 import itertools
 import os
+import fcntl
+import stat
 from os.path import isfile, join, basename, splitext, dirname
 
 from . import read
@@ -56,9 +58,13 @@ def save(var, filename, precision='.7e', format='ascii', comment=None,
         xmlopen = gzip.open
     else:
         xmlopen = open
-    with xmlopen(filename, mode='wt', encoding='UTF-8') as fp:
+    with xmlopen(filename, mode='wt', encoding='utf8') as fp:
+        print("opening format: " + format)
         if format == 'binary':
+            fcntl.fcntl(fp, fcntl.F_SETFL, os.O_NONBLOCK)
             with open(filename + '.bin', mode='wb') as binaryfp:
+                fcntl.fcntl(binaryfp, fcntl.F_SETFL, os.O_NONBLOCK)
+
                 axw = write.ARTSXMLWriter(fp, precision=precision,
                                           binaryfp=binaryfp)
                 axw.write_header()
@@ -94,12 +100,14 @@ def load(filename):
                [ 2.,  3.]])
 
     """
+
     # If file is not found, try the gzipped version.
-    if not isfile(filename):
-        if not isfile(filename + '.gz'):
-            raise FileNotFoundError("No such file: '{}'".format(filename))
-        else:
-            filename += '.gz'
+    if not stat.S_ISFIFO(os.stat(filename).st_mode):
+        if not isfile(filename):
+            if not isfile(filename + '.gz'):
+                raise FileNotFoundError("No such file: '{}'".format(filename))
+            else:
+                filename += '.gz'
 
     if filename.endswith('.gz'):
         xmlopen = gzip.open
@@ -108,8 +116,9 @@ def load(filename):
 
     binaryfilename = filename + '.bin'
     with xmlopen(filename, 'rb') as fp:
-        if isfile(binaryfilename):
+        if isfile(binaryfilename) or stat.S_ISFIFO(os.stat(filename).st_mode):
             with open(binaryfilename, 'rb',) as binaryfp:
+                print("opening binary:" + binaryfilename)
                 return read.parse(fp, binaryfp).getroot().value()
         else:
             return read.parse(fp).getroot().value()

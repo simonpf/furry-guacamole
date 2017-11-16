@@ -639,6 +639,7 @@ class QRNN:
         Forward propagate the inputs in `x` through the network to
         obtain the predicted quantiles `y`.
 
+<<<<<<< f6b20494c3b25ff98b6949726e1518698ab10de5
         arguments:
 
             x(np.array): array of shape `(n, m)` containing `n` inputs for which
@@ -647,11 +648,22 @@ class QRNN:
         returns:
 
              array of shape `(n, k)` where k is the number of quantiles that are
+=======
+        Arguments:
+
+            x(np.array): Array of shape `(n, m)` containing `n` inputs for which
+                         to predict the conditional quantiles.
+
+        Returns:
+
+             Array of shape `(n, k)` where k is the number of quantiles that are
+>>>>>>> More work in progress.
              to be predicted by the network.
         """
         predictions = np.stack([m.predict((x - self.x_mean) / self.x_sigma) for m in self.models])
         return np.mean(predictions, axis = 0)
 
+<<<<<<< f6b20494c3b25ff98b6949726e1518698ab10de5
     def predict_ensemble(self, x, y_train):
         predictions = np.stack([m.predict((x - self.x_mean) / self.x_sigma) for m in self.models])
 
@@ -694,6 +706,8 @@ class QRNN:
 
         return pred_corrected
 
+=======
+>>>>>>> More work in progress.
     def cdf(self, x):
         r"""
         Approximate the posterior CDF for given inputs `x`.
@@ -732,6 +746,7 @@ class QRNN:
         qs[1:-1] = self.quantiles
         qs[0] = 0.0
         qs[-1] = 1.0
+<<<<<<< f6b20494c3b25ff98b6949726e1518698ab10de5
 
         return y_pred, qs
 
@@ -753,6 +768,29 @@ class QRNN:
             Tuple (xs, fs) containing the :math: `x`-values in `xs` and corresponding
             values of the posterior CDF :math: `F(x)` in `fs`.
 
+=======
+
+        return y_pred, qs
+
+    def sample_posterior(self, x, n = 1):
+        r"""
+        Generates :code:`n` samples from the estimated posterior
+        distribution for the input vector :code:`x`. The sampling
+        is performed by the inverse CDF method using the estimated
+        CDF obtained from the :code:`cdf` member function.
+        Arguments:
+
+            x(np.array): Array of shape `(n, m)` containing `n` inputs for which
+                         to predict the conditional quantiles.
+
+            n(int): The number of samples to generate.
+
+        Returns:
+
+            Tuple (xs, fs) containing the :math: `x`-values in `xs` and corresponding
+            values of the posterior CDF :math: `F(x)` in `fs`.
+
+>>>>>>> More work in progress.
         """
         y_pred, qs = self.cdf(x)
         p = np.random.rand(n)
@@ -804,6 +842,7 @@ class QRNN:
         qs[0, -1] = 1.0
 
         return np.trapz((qs - ind)**2.0, y_cdf)
+<<<<<<< f6b20494c3b25ff98b6949726e1518698ab10de5
 
     def evaluate_crps(self, x, y):
         r"""
@@ -813,6 +852,17 @@ class QRNN:
         inputs in `x` and evaluates the CRPS of the predictions
         against the materializations in `y`.
 
+=======
+
+    def evaluate_crps(self, x, y):
+        r"""
+        Evaluate network prediction and compute CRPS.
+
+        This function evaluates the networks prediction on the
+        inputs in `x` and evaluates the CRPS of the predictions
+        against the materializations in `y`.
+
+>>>>>>> More work in progress.
         Arguments:
 
             x(numpy.array): Array of shape `(n, m)` containing the `n`

@@ -87,3 +87,7 @@ class TestWorkspace:
         self.ws.atmosphere_dim = 1
         arts_agenda(agenda)
         assert self.ws.atmosphere_dim.value == 1
+
+    def test_execute_controlfile(self):
+        os.chdir("test_files")
+        ws.exectue_controlfile("controlfile.arts")

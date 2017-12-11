@@ -89,5 +89,14 @@ class TestWorkspace:
         assert self.ws.atmosphere_dim.value == 1
 
     def test_execute_controlfile(self):
-        os.chdir("test_files")
-        ws.exectue_controlfile("controlfile.arts")
+
+        dir = os.path.dirname(os.path.realpath(__file__))
+        print(dir)
+        test_dir = os.path.join(dir, "test_files")
+        print(test_dir)
+        self.ws.WriteXML("ascii", np.array([1.0]),
+                         os.path.join(test_dir, "vector.xml"))
+        os.chdir(test_dir)
+        self.ws.execute_controlfile("controlfile.arts")
+
+        os.remove(os.path.join(test_dir, "vector.xml"))

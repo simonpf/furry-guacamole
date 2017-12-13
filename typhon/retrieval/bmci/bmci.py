@@ -119,7 +119,6 @@ class BMCI:
         w, v = np.linalg.eig(self.s_o)
 
         inds = np.argsort(w)
-        print(w[inds])
         self.pc1_e = 1.0 / w[inds[0]]
         self.pc1 = v[:, inds[0]]
         self.pc1_proj = np.dot((y - self.y_mean), self.pc1)
@@ -261,7 +260,7 @@ class BMCI:
         computes the continuously ranked probability score:
 
         .. math::
-            CRPS(\mathbf{y}, x) = \int_-\infty^\infty (F_{x | \mathbf{y}}(x')
+            CRPS(\mathbf{y}, x) = \int_{-\infty}^\infty (F_{x | \mathbf{y}}(x')
             - \mathrm{1}_{x < x'})^2 \: dx'
 
         Arguments:
@@ -279,7 +278,6 @@ class BMCI:
             i_l, i_u, ws = self.weights(y_obs[i, :], x2_max)
 
             inds = np.where((i_l <= self.x_sorted_inds) * (self.x_sorted_inds < i_u))
-            print(inds)
             inds = self.x_sorted_inds[inds] - i_l
 
             ws = ws[inds]
@@ -299,41 +297,128 @@ class BMCI:
 
         return scores
 
+    def cdf(self, y_obs, x2_max = -1):
+        r"""
+        Cumulative posterior density function.
 
-    def predict_quantiles(self, y_obs, taus):
+        This function approximates the cumulative posterior distribution
+        :math:`F(x | \mathbf{y})` for the given observation `y_obs` using
+
+        .. math::
+
+            F(x | \mathbf{y}) = \int_{-\infty}^{x} p(x' | \mathbf{y}) \: dx'
+            \approx \sum_{x_i < x} \frac{w_i(\mathbf{y})}{\sum_j w_j(\mathbf{y})}
+
+        Args:
+
+            y_obs(numpy.array): `m`-element array containing the observation
+                                 for which to compute the posterior CDF.
+
+            x2_max(float): The :math:`\chi^2` cutoff to apply to elements in the
+                           database. Ignored if less than zero.
+
+        Returns:
+
+            A tuple `(xs, ys)` containing the estimated values of the posterior
+            CDF :math:`F(x | \mathbf{y})` evaluated at the $x$ values
+            corresponding to the hits in the database.
+
+        Raises:
+
+            ValueError
+                If the number of channels in the observations is different from
+                the database.
+
+        """
+        try:
+            y_obs = y_obs.reshape(1, self.m)
+        except:
+            raise ValueError("The observation vector is inconsistent"
+                             "with the database.")
+
+        i_l, i_u, ws = self.weights(y_obs, x2_max)
+
+        inds = np.where((i_l <= self.x_sorted_inds) * (self.x_sorted_inds < i_u))
+        inds = self.x_sorted_inds[inds] - i_l
+
+        ws = ws[inds]
+        xs = self.x[i_l:i_u][inds]
+
+        ws_cum = ws.cumsum()
+        if ws_cum[-1] > 0.0:
+            ws_cum /= ws_cum[-1]
+        else:
+            ws_cum = np.float("nan")
+        return xs, ws_cum
+
+    def predict_quantiles(self, y_obs, taus, x2_max = -1):
         r"""
         This estimates the quantiles given in `taus` by approximating
         the CDF of the posterior as
 
         .. math::
 
-            F(x) & = \int_{-\infty}^{x} p(x') \: dx'
-            \sim \sum_{x_i < x} w_i
+            F(x | \mathbf{y}) = \int_{-\infty}^{x} p(x' | \mathbf{y}) \: dx'
+            \approx \sum_{x_i < x} \frac{w_i(\mathbf{y})}{\sum_j w_j(\mathbf{y})}
 
-        and then interpolating :math:`F^{-1}` to obtain the requested quantiles.
+        and then interpolating :math:`F^{-1}` to obtain the desired quantiles.
 
         Args:
 
-            y_obs(numpy.array): `m`-times-`n`` matrix containing the `m`
-                                 observations with `n`` channels for which to
+            y_obs(numpy.array): `n`-times-`m` matrix containing the `n`
+                                 observations with `m` channels for which to
                                  compute the percentiles.
 
             taus(numpy.array): 1D array containing the `k` quantiles
                                :math:`\tau \in [0,1]` to compute.
 
+            x2_max(float): The :math:`\chi^2` cutoff to apply to elements in the
+                           database. Ignored if less than zero.
+
         Returns:
 
-            A 2D numpy.array with shape `(m, k)` array containing the estimated
-            quantiles.
+            A 2D numpy.array with shape `(n, k)` array containing the estimated
+            quantiles or `NAN` if no database entries were found in the
+            :math:`\chi^2` search  region.
+
+        Raises:
+
+            ValueError
+                If the number of channels in the observations is different from
+                the database.
+
+            ValueError
+                If any of the percentiles lies outside the interval [0, 1].
 
         """
-        xs = np.zeros((y_obs.shape[0], taus.size))
+        taus = np.asarray(taus).reshape((-1, ))
+
+        m = y_obs.shape[1]
+        n = y_obs.shape[0]
+        k = taus.size
+
+        if not m == self.m:
+            raise ValueError("Number of channels is inconsistent with database.")
+
+        if np.any((taus < 0.0) + (taus > 1.0)):
+            raise ValueError("Percentiles must be in [0.0, 1.0]")
+
+        qs = np.zeros((n, k))
         for i in range(y_obs.shape[0]):
-            i_l, i_u, ws = self.weights(y_obs[i,:])
-            ws_sum = np.cumsum(ws[self.x_sorted_inds[i_l, i_u]])
-            if ws_sum > 0.0:
-                ws_sum /= ws_sum[-1]
-                xs[i, :] = np.interp(taus, ws_sum, self.x.ravel())
+
+            i_l, i_u, ws = self.weights(y_obs[i, :], x2_max)
+
+            inds = np.where((i_l <= self.x_sorted_inds) * (self.x_sorted_inds < i_u))
+            inds = self.x_sorted_inds[inds] - i_l
+
+            ws = ws[inds]
+            xs = self.x[i_l:i_u][inds]
+
+            ws_cum = ws.cumsum()
+
+            if ws_cum[-1] > 0.0:
+                ws_cum /= ws_cum[-1]
+                qs[i, :] = np.interp(taus, ws_cum, xs)
             else:
-                xs[i, :] = np.float("nan")
-        return xs
+                qs[i, :] = np.float("nan")
+        return qs

@@ -284,8 +284,6 @@ class MCMC:
 
         for i1 in range(n_steps):
             acceptance[i1, :], ly, lxs = self.step(ws, ly, lxs)
-            print(ly)
-            print(lxs)
             for i2, h in enumerate(hist):
                 hist[i2][i1+1, :] = self.vars[i2][0][:]
             for i2,s in enumerate(self.stats):
@@ -296,7 +294,6 @@ class MCMC:
         self.lxs_old   = lxs
         self.stats_old = stats[-1,:]
         self.hist_old  = [h[-1,:] for h in hist]
-        print("stopping: " + str(self.vars[0][0]))
         return hist, stats, ls, acceptance
 
     def run(self, ws, n_steps):
@@ -316,8 +313,6 @@ class MCMC:
         hist  = [np.zeros((n_steps,) + x.shape) for x,l,j in self.vars]
         acceptance = np.zeros((n_steps, len(self.vars)), dtype=bool)
 
-        print("starting: " + str(self.vars[0][0]))
-
         ly  = self.ly_old
         lxs = self.lxs_old
 
@@ -333,5 +328,4 @@ class MCMC:
         self.lxs_old = lxs
         self.stats_old = stats[-1,:]
         self.hist_old  = [h[-1,:] for h in hist]
-        print("stopping: " + str(self.vars[0][0]))
         return hist, stats, ls, acceptance

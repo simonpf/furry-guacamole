@@ -643,6 +643,30 @@ class QRNN:
 
         return y_pred, qs
 
+    def sample_posterior(self, x, n = 1):
+        r"""
+        Generates :code:`n` samples from the estimated posterior
+        distribution for the input vector :code:`x`. The sampling
+        is performed by the inverse CDF method using the estimated
+        CDF obtained from the :code:`cdf` member function.
+        Arguments:
+
+            x(np.array): Array of shape `(n, m)` containing `n` inputs for which
+                         to predict the conditional quantiles.
+
+            n(int): The number of samples to generate.
+
+        Returns:
+
+            Tuple (xs, fs) containing the :math: `x`-values in `xs` and corresponding
+            values of the posterior CDF :math: `F(x)` in `fs`.
+
+        """
+        y_pred, qs = self.cdf(x)
+        p = np.random.rand(n)
+        x = np.interp(qs, y_pred, x)
+        return x
+
     @staticmethod
     def crps(y_pred, y_test, quantiles):
         r"""

@@ -102,6 +102,8 @@ class BMCI:
         self.n = y.shape[0]
         self.m = y.shape[1]
 
+        x = x.reshape(-1)
+
         if not s_o.ndim == 2:
             raise Exception("Covariance matrix must be a 2D array.")
         if not self.m == s_o.shape[0] or not self.m == s_o.shape[1]:
@@ -288,7 +290,7 @@ class BMCI:
 
             ws_cum = ws.cumsum()
 
-            if ws_cum[-1] > 0.0:
+            if ws_cum.size > 0 and ws_cum[-1] > 0.0:
                 ws_cum /= ws_cum[-1]
                 scores[i] = np.trapz((ws_cum - indicator) ** 2.0,
                                      xs)
@@ -348,7 +350,7 @@ class BMCI:
         if ws_cum[-1] > 0.0:
             ws_cum /= ws_cum[-1]
         else:
-            ws_cum = np.float("nan")
+            ws_cum[:] = np.float("nan")
         return xs, ws_cum
 
     def predict_quantiles(self, y_obs, taus, x2_max = -1):
@@ -416,7 +418,7 @@ class BMCI:
 
             ws_cum = ws.cumsum()
 
-            if ws_cum[-1] > 0.0:
+            if ws_cum.size > 0 and ws_cum[-1] > 0.0:
                 ws_cum /= ws_cum[-1]
                 qs[i, :] = np.interp(taus, ws_cum, xs)
             else:

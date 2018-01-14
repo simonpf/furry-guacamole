@@ -264,7 +264,7 @@ class LRDecay(keras.callbacks.Callback):
         if self.steps > self.convergence_steps:
             lr = keras.backend.get_value(self.model.optimizer.lr)
             keras.backend.set_value(self.model.optimizer.lr, lr / self.lr_decay)
-            self.convergence_steps = 0.0
+            self.steps = 0
             print("\n Reduced learning rate to " + str(lr))
 
             if lr < self.lr_minimum:

@@ -99,15 +99,21 @@ class TrainingGenerator:
         return self
 
     def __next__(self):
-        inds = np.random.randint(0, self.x_train.shape[0], self.bs)
-
+        inds = self.indices[np.arange(self.i * self.bs,
+                                      (self.i + 1) * self.bs)
+                                     % self.indices.size]
         x_batch  = np.copy(self.x_train[inds,:])
-        if (self.sigma_noise):
+        if not self.sigma_noise is None:
             x_batch += np.random.randn(*x_batch.shape) * self.sigma_noise
         x_batch  = (x_batch - self.x_mean) / self.x_sigma
         y_batch  = self.y_train[inds]
 
         self.i = self.i + 1
+
+        # Shuffle training set after each epoch.
+        if self.i % (self.x_train.shape[0] // self.bs):
+            self.indices = np.random.permutation(self.x_train.shape[0])
+
         return (x_batch, y_batch)
 
 # TODO: Make y-noise argument optional
@@ -217,7 +223,7 @@ class ValidationGenerator:
 
     def __next__(self):
         x_val = np.copy(self.x_val)
-        if self.sigma_noise:
+        if not self.sigma_noise is None:
             x_val += np.random.randn(*self.x_val.shape) * self.sigma_noise
         x_val = (x_val - self.x_mean) / self.x_sigma
         return (x_val, self.y_val)

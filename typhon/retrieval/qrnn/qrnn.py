@@ -111,7 +111,7 @@ class TrainingGenerator:
         self.i = self.i + 1
 
         # Shuffle training set after each epoch.
-        if self.i % (self.x_train.shape[0] // self.bs):
+        if self.i % (self.x_train.shape[0] // self.bs) == 0:
             self.indices = np.random.permutation(self.x_train.shape[0])
 
         return (x_batch, y_batch)

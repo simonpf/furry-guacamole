@@ -134,7 +134,15 @@ class AdversarialTrainingGenerator:
                  component.
         batch_size: The size of a training batch.
     """
-    def __init__(self, x_train, x_mean, x_sigma, y_train, sigma_noise, batch_size, input_gradients):
+    def __init__(self,
+                 x_train,
+                 x_mean,
+                 x_sigma,
+                 y_train,
+                 sigma_noise,
+                 batch_size,
+                 input_gradients,
+                 eps):
         self.bs = batch_size
 
         self.x_train  = x_train
@@ -150,6 +158,7 @@ class AdversarialTrainingGenerator:
         bs2 = self.bs // 2
 
         self.input_gradients = input_gradients
+        self.eps = eps
 
     def __iter__(self):
         print("iter...")
@@ -177,7 +186,8 @@ class AdversarialTrainingGenerator:
 
             x_batch[:bs2, :]  = np.copy(self.x_train[inds,:])
             if (self.sigma_noise):
-                x_batch[:bs2, :] += np.random.randn(bs2, self.x_train.shape[1]) * self.sigma_noise
+                x_batch[:bs2, :] += np.random.randn(bs2, self.x_train.shape[1]) \
+                                    * self.sigma_noise
             x_batch[:bs2, :]  = (x_batch[:bs2, :] - self.x_mean) / self.x_sigma
             y_batch[:bs2, :]  = self.y_train[inds].reshape(-1, 1)
             x_batch[bs2:, :]  = x_batch[:bs2, :]
@@ -185,8 +195,7 @@ class AdversarialTrainingGenerator:
 
             if (self.i > 10):
                 grads = self.input_gradients([x_batch[:bs2, :], y_batch[:bs2, :], [1.0]])[0]
-                eps = 0.01
-                x_batch[bs2:, :] += eps * np.sign(grads)
+                x_batch[bs2:, :] += self.eps * np.sign(grads)
 
         self.i = self.i + 1
         return (x_batch, y_batch)
@@ -378,6 +387,7 @@ class QRNN:
 
     def __fit_params__(self, kwargs):
         at                    = kwargs.pop("adversarial_training", False)
+        dat                   = kwargs.pop("delta_at", 0.01)
         batch_size            = kwargs.pop("batch_size", 512)
         convergence_epochs    = kwargs.pop("convergence_epochs", 10)
         initial_learning_rate = kwargs.pop('initial_learning_rate', 0.01)
@@ -385,7 +395,7 @@ class QRNN:
         learning_rate_minimum = kwargs.pop('learning_rate_minimum', 1e-6)
         maximum_epochs        = kwargs.pop("maximum_epochs", 200)
         training_split        = kwargs.pop("training_split", 0.9)
-        return at, batch_size, convergence_epochs, initial_learning_rate, \
+        return at, dat, batch_size, convergence_epochs, initial_learning_rate, \
                learning_rate_decay, learning_rate_minimum, maximum_epochs, \
                training_split, kwargs
 
@@ -403,7 +413,7 @@ class QRNN:
         # lrm: learning rate maximum
         # me:  maximum number of epochs
         # ts:  split ratio of training set
-        at, bs, ce, ilr, lrd, lrm, me, ts, kwargs = self.__fit_params__(kwargs)
+        at, dat, bs, ce, ilr, lrd, lrm, me, ts, kwargs = self.__fit_params__(kwargs)
 
         # Mean and std. dev
         x_mean  = np.mean(x_train, axis = 0, keepdims = True)
@@ -582,7 +592,7 @@ class QRNN:
         # lrm: learning rate minimum
         # me:  maximum number of epochs
         # ts:  split ratio of training set
-        at, bs, ce, ilr, lrd, lrm, me, ts, kwargs = self.__fit_params__(kwargs)
+        at, dat, bs, ce, ilr, lrd, lrm, me, ts, kwargs = self.__fit_params__(kwargs)
 
         # Split training and validation set if x_val or y_val
         # are not provided.
@@ -606,8 +616,14 @@ class QRNN:
             if at:
                 inputs = [model.input, model.targets[0], model.sample_weights[0]]
                 input_gradients = K.function(inputs, K.gradients(model.total_loss, model.input))
-                training_generator   = AdversarialTrainingGenerator(x_train, self.x_mean, self.x_sigma,
-                                                                    y_train, sigma_noise, bs, input_gradients)
+                training_generator   = AdversarialTrainingGenerator(x_train,
+                                                                    self.x_mean,
+                                                                    self.x_sigma,
+                                                                    y_train,
+                                                                    sigma_noise,
+                                                                    bs,
+                                                                    input_gradients,
+                                                                    dat)
             else:
                 training_generator   = TrainingGenerator(x_train, self.x_mean, self.x_sigma,
                                                         y_train, sigma_noise, bs)

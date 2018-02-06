@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
+
 try:
     __ATRASU_SETUP__
 except:

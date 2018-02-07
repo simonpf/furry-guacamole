@@ -639,18 +639,60 @@ class QRNN:
         Forward propagate the inputs in `x` through the network to
         obtain the predicted quantiles `y`.
 
-        Arguments:
+        arguments:
 
-            x(np.array): Array of shape `(n, m)` containing `n` inputs for which
+            x(np.array): array of shape `(n, m)` containing `n` inputs for which
                          to predict the conditional quantiles.
 
-        Returns:
+        returns:
 
-             Array of shape `(n, k)` where k is the number of quantiles that are
+             array of shape `(n, k)` where k is the number of quantiles that are
              to be predicted by the network.
         """
         predictions = np.stack([m.predict((x - self.x_mean) / self.x_sigma) for m in self.models])
         return np.mean(predictions, axis = 0)
+
+    def predict_ensemble(self, x, y_train):
+        predictions = np.stack([m.predict((x - self.x_mean) / self.x_sigma) for m in self.models])
+
+        bins = np.linspace(y_train.min(), y_train.max(), 100)
+        y_a, x_a = np.histogram(y_train)
+
+        predictions_e = np.zeros((predictions.shape[0], predictions.shape[1], predictions.shape[2] + 2))
+        predictions_e[:, :, 0]  = 2.0 * predictions[:, :, 1] - predictions[:, :, 2]
+        predictions_e[:, :, -1] = 2.0 * predictions[:, :, -2] - predictions[:, :, -3]
+        predictions_e_c = 0.5 * (predictions_e[:, :, 1:] + predictions_e[:, :, :-1])
+
+        qs = np.zeros(self.quantiles.size + 2)
+        qs[0] = 0.0
+        qs[1] = 1.0
+
+        y_a_i = np.interp(predictions_e_c, y_a, x_a)
+        corrections = y_a_i * np.diff(qs).reshape(1, 1, -1)
+        corrections /= np.sum(corrections, axis = 2, keepdims = True)
+
+        d_pred = np.diff(predicitons, axis = 2)
+        d_pred *= corrections
+
+        pred_corrected = predictions_e
+        pred_corrected[:, :, :] = predictions_e[:, :, 0]
+        pred_corrected[:, :, 1:] = np.cumsum(d_pred, axis = 2)
+
+        predictions_e = np.mean(pred_corrected, axis = 0)
+        predictions_e_c = 0.5 * (predictions[:, 1] + predictions[: -1])
+
+        y_a_i = np.interp(predictions_e_c, y_a, x_a)
+        corrections = np.diff(qs).reshape(1, 1, -1) / y_a_i
+        corrections /= np.sum(corrections, axis = 2, keepdims = True)
+
+        d_pred = np.diff(predictions, axis = 1)
+        d_pred *= corrections
+
+        pred_corrected = predictions_e
+        pred_corrected[:, :] = predictions_e[:, :, 0]
+        pred_corrected[:, 1:] = np.cumsum(d_pred, axis = 2)
+
+        return pred_corrected
 
     def cdf(self, x):
         r"""

@@ -5,10 +5,15 @@ import os
 import pickle
 
 # Keras Imports
-import keras
-from keras.models     import Sequential, clone_model
-from keras.layers     import Dense, Activation, Dropout
-from keras.optimizers import SGD
+try:
+    import keras
+    from keras.models     import Sequential, clone_model
+    from keras.layers     import Dense, Activation, Dropout
+    from keras.optimizers import SGD
+except ImportError:
+    raise Exception("Could not import the required Keras modules. The QRNN " /
+                    "implementation was developed for use with Keras version"/
+                    "2.0.9.")
 
 ################################################################################
 # Loss Functions
